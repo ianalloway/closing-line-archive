@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "closing-line-archive"
+version = "0.1.0"
+description = "SQLite CLI to append and query sportsbook odds snapshots — closing-line and beat-close helpers"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Ian Alloway" }]
+keywords = ["odds", "sports", "closing-line", "sqlite", "cli"]
+
+dependencies = []
+
+[project.optional-dependencies]
+parquet = ["pyarrow>=14.0"]
+dev = ["pytest>=7.0", "ruff>=0.3"]
+
+[project.scripts]
+close-archive = "closing_line_archive.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["closing_line_archive"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
