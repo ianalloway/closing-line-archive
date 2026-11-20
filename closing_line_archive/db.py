@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS odds_snapshot (
   raw_json TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_odds_latest_quote
+  ON odds_snapshot(event_key, participant_key, market_type, book, ts_utc DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_odds_event_ts ON odds_snapshot(event_key, ts_utc);
 CREATE INDEX IF NOT EXISTS idx_odds_event_participant ON odds_snapshot(event_key, participant_key);
 """
