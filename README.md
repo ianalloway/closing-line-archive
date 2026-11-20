@@ -32,7 +32,7 @@ close-archive beat-close odds.sqlite \
   --close-before "2026-03-01T23:00:00Z"
 ```
 
-Use **ISO8601 UTC** strings for timestamps (lexicographic compare matches time order).
+Use one fixed-width UTC format throughout the database and for both cutoffs, such as `YYYY-MM-DDTHH:MM:SSZ`. The newest inserted quote wins a timestamp tie. Select `--market h2h` or another market when an event and participant contain multiple markets. A change in the point line leaves the price comparison blank.
 
 ## Pairing with the rest of the stack
 

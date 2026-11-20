@@ -8,7 +8,12 @@ import json
 import sys
 from pathlib import Path
 
-from closing_line_archive.beat_close import implied_from_american, latest_per_book, price_rank
+from closing_line_archive.beat_close import (
+    implied_from_american,
+    latest_per_book,
+    price_rank,
+    resolve_market,
+)
 from closing_line_archive.db import connect, init_db, insert_row, parse_line_obj
 
 
@@ -25,7 +30,7 @@ def _append_stream(conn, fh) -> int:
             continue
         obj = json.loads(line)
         if not isinstance(obj, dict):
-            raise ValueError("each line must be a JSON object")
+            raise ValueError("each line must be a JSON object")  # noqa: TRY004 - invalid file contents
         p = parse_line_obj(obj)
         insert_row(
             conn,
@@ -72,17 +77,25 @@ def cmd_export_csv(args: argparse.Namespace) -> None:
 def cmd_beat_close(args: argparse.Namespace) -> None:
     path = Path(args.db)
     with connect(path) as conn:
+        conn.execute("BEGIN")
+        market = getattr(args, "market", None)
+        if market is None:
+            market = resolve_market(conn, args.event, args.participant, max(args.open_before, args.close_before))
+        else:
+            market = market.strip().lower()
         open_q = latest_per_book(
             conn,
             event_key=args.event,
             participant_key=args.participant,
             before_utc=args.open_before,
+            market_type=market,
         )
         close_q = latest_per_book(
             conn,
             event_key=args.event,
             participant_key=args.participant,
             before_utc=args.close_before,
+            market_type=market,
         )
     by_book_open = {q.book: q for q in open_q}
     by_book_close = {q.book: q for q in close_q}
@@ -108,7 +121,7 @@ def cmd_beat_close(args: argparse.Namespace) -> None:
         o_imp = implied_from_american(o_am) if o_am is not None else None
         c_imp = implied_from_american(c_am) if c_am is not None else None
         beat = ""
-        if o_am is not None and c_am is not None:
+        if o is not None and c is not None and o.line == c.line and o_am is not None and c_am is not None:
             beat = "yes" if price_rank(o_am) >= price_rank(c_am) else "no"
         w.writerow(
             [
@@ -148,12 +161,16 @@ def main() -> None:
     p_bc.add_argument("db")
     p_bc.add_argument("--event", required=True)
     p_bc.add_argument("--participant", required=True)
+    p_bc.add_argument("--market", help="Market type, required when multiple markets match")
     p_bc.add_argument("--open-before", required=True, help="ISO8601 UTC (inclusive ceiling for ts_utc)")
     p_bc.add_argument("--close-before", required=True)
     p_bc.set_defaults(func=cmd_beat_close)
 
     args = p.parse_args()
-    args.func(args)
+    try:
+        args.func(args)
+    except ValueError as error:
+        p.error(str(error))
 
 
 if __name__ == "__main__":
